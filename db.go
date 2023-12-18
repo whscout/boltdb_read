@@ -968,14 +968,21 @@ type Info struct {
 }
 
 type meta struct {
-	magic    uint32
-	version  uint32
+	magic uint32
+	// 版本
+	version uint32
+	// 页大小
 	pageSize uint32
 	flags    uint32
-	root     bucket
+	// 根bucket
+	root bucket
+	// 空闲列表页的ID
 	freelist pgid
-	pgid     pgid
-	txid     txid
+	// 页ID
+	pgid pgid
+	// 最大事务ID
+	txid txid
+	// 校验和
 	checksum uint64
 }
 
@@ -1005,12 +1012,14 @@ func (m *meta) write(p *page) {
 	}
 
 	// Page id is either going to be 0 or 1 which we can determine by the transaction ID.
+	// 页ID要么0 要么1
 	p.id = pgid(m.txid % 2)
 	p.flags |= metaPageFlag
 
 	// Calculate the checksum.
 	m.checksum = m.sum64()
 
+	// p.meta() 返回的是真实数据的地址，m.copy() 之后将meta写入page中了
 	m.copy(p.meta())
 }
 

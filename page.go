@@ -7,17 +7,25 @@ import (
 	"unsafe"
 )
 
+// 页头大小 16字节
 const pageHeaderSize = int(unsafe.Offsetof(((*page)(nil)).ptr))
 
 const minKeysPerPage = 2
 
+// 分支节点中，每个元素所占大小 16字节
 const branchPageElementSize = int(unsafe.Sizeof(branchPageElement{}))
+
+// 叶子节点每个元素所占大小 16字节
 const leafPageElementSize = int(unsafe.Sizeof(leafPageElement{}))
 
 const (
-	branchPageFlag   = 0x01
-	leafPageFlag     = 0x02
-	metaPageFlag     = 0x04
+	// 非叶子节点页 分支节点页 存储索引信息（页号，元素key值）
+	branchPageFlag = 0x01
+	// 叶子节点页 存储数据信息（页号，key value）
+	leafPageFlag = 0x02
+	// 元数据页 存储数据库的元信息 比如空闲列表ID 防止桶的根页等
+	metaPageFlag = 0x04
+	// 空闲链表页 存储哪些页是空闲页 可以用来后续分配空间时，优先分配
 	freelistPageFlag = 0x10
 )
 
@@ -28,11 +36,16 @@ const (
 type pgid uint64
 
 type page struct {
-	id       pgid
-	flags    uint16
-	count    uint16
+	// 页ID
+	id pgid
+	// 页类型，可以是分支，叶子节点，元信息，空闲列表
+	flags uint16
+	// 个数 2字节，统计叶子节点、非叶子节点、空闲列表页的个数
+	count uint16
+	// 4字节，数据是否有溢出
 	overflow uint32
-	ptr      uintptr
+	// 真实数据
+	ptr uintptr
 }
 
 // typ returns a human readable page type string used for debugging.
@@ -51,6 +64,7 @@ func (p *page) typ() string {
 
 // meta returns a pointer to the metadata section of the page.
 func (p *page) meta() *meta {
+	// 将page数据转换成meta
 	return (*meta)(unsafe.Pointer(&p.ptr))
 }
 
@@ -157,6 +171,7 @@ func (a pgids) merge(b pgids) pgids {
 // mergepgids copies the sorted union of a and b into dst.
 // If dst is too small, it panics.
 func mergepgids(dst, a, b pgids) {
+	// 将a和b按照有序合并成到dst中，a和b有序
 	if len(dst) < len(a)+len(b) {
 		panic(fmt.Errorf("mergepgids bad len %d < %d + %d", len(dst), len(a), len(b)))
 	}
