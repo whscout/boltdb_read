@@ -109,7 +109,7 @@ func (s pages) Less(i, j int) bool { return s[i].id < s[j].id }
 
 // branchPageElement represents a node on a branch page.
 type branchPageElement struct {
-	pos   uint32
+	pos   uint32 // 该元信息与真实key之间的偏移量
 	ksize uint32
 	pgid  pgid
 }
@@ -122,6 +122,7 @@ func (n *branchPageElement) key() []byte {
 
 // leafPageElement represents a node on a leaf page.
 type leafPageElement struct {
+	// 该值主要用来区分，是子桶叶子节点元素还是普通的key/value叶子节点元素。flags值为1时表示子桶。否则为key/value
 	flags uint32
 	pos   uint32
 	ksize uint32

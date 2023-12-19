@@ -158,6 +158,7 @@ func (n *node) del(key []byte) {
 }
 
 // read initializes the node from a page.
+// page -> node (page数据读入node)
 func (n *node) read(p *page) {
 	n.pgid = p.id
 	n.isLeaf = ((p.flags & leafPageFlag) != 0)
@@ -180,6 +181,7 @@ func (n *node) read(p *page) {
 
 	// Save first key so we can find the node in the parent when we spill.
 	if len(n.inodes) > 0 {
+		// 保存第一个key，当节点溢出时，可以在父节点中找到该节点
 		n.key = n.inodes[0].key
 		_assert(len(n.key) > 0, "read: zero-length node key")
 	} else {
@@ -188,6 +190,7 @@ func (n *node) read(p *page) {
 }
 
 // write writes the items onto one or more pages.
+// node -> page (node数据写入page)
 func (n *node) write(p *page) {
 	// Initialize page.
 	if n.isLeaf {
@@ -207,6 +210,7 @@ func (n *node) write(p *page) {
 	}
 
 	// Loop over each item and write it to the page.
+	// inode 存储的是 branchPageElement 或者 leafPageElement
 	b := (*[maxAllocSize]byte)(unsafe.Pointer(&p.ptr))[n.pageElementSize()*len(n.inodes):]
 	for i, item := range n.inodes {
 		_assert(len(item.key) > 0, "write: zero-length inode key")
@@ -587,17 +591,22 @@ func (n *node) dump() {
 
 type nodes []*node
 
-func (s nodes) Len() int           { return len(s) }
-func (s nodes) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s nodes) Less(i, j int) bool { return bytes.Compare(s[i].inodes[0].key, s[j].inodes[0].key) == -1 }
+func (s nodes) Len() int      { return len(s) }
+func (s nodes) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s nodes) Less(i, j int) bool {
+	return bytes.Compare(s[i].inodes[0].key, s[j].inodes[0].key) == -1
+}
 
 // inode represents an internal node inside of a node.
 // It can be used to point to elements in a page or point
 // to an element which hasn't been added to a page yet.
 type inode struct {
+	// 标识是否是子桶页节点 如果flags值为1表示子桶叶节点，否则为普通叶节点
 	flags uint32
-	pgid  pgid
-	key   []byte
+	// 当inode为分支元素时，pgid才有值，为叶子元素时，则没值
+	pgid pgid
+	key  []byte
+	// 当inode为分支元素时，value为空，为叶子元素时，才有值
 	value []byte
 }
 
