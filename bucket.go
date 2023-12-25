@@ -34,12 +34,15 @@ const DefaultFillPercent = 0.5
 
 // Bucket represents a collection of key/value pairs inside the database.
 type Bucket struct {
+	// 存储该Bucket所在页面ID，以及当前序列号
 	*bucket
-	tx       *Tx                // the associated transaction
-	buckets  map[string]*Bucket // subbucket cache
-	page     *page              // inline page reference
-	rootNode *node              // materialized node for the root page.
-	nodes    map[pgid]*node     // node cache
+	tx      *Tx                // the associated transaction
+	buckets map[string]*Bucket // subbucket cache
+	// 存储inline页面信息
+	page *page // inline page reference
+	// 该Bucket的B+树根节点指针
+	rootNode *node          // materialized node for the root page.
+	nodes    map[pgid]*node // node cache
 
 	// Sets the threshold for filling nodes when they split. By default,
 	// the bucket will fill to 50% but it can be useful to increase this

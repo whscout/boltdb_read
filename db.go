@@ -357,6 +357,7 @@ func (db *DB) init() error {
 		m.version = version
 		m.pageSize = uint32(db.pageSize)
 		m.freelist = 2
+		// 3: 第三页，空的leafPage （373行代码）
 		m.root = bucket{root: 3}
 		m.pgid = 4
 		m.txid = txid(i)
@@ -804,6 +805,13 @@ func (db *DB) meta() *meta {
 	// We have to return the meta with the highest txid which doesn't fail
 	// validation. Otherwise, we can cause errors when in fact the database is
 	// in a consistent state. metaA is the one with the higher txid.
+	// 为什么有两份 meta page？
+	// 这可以理解为一种本地容错方案：如果一个事务在 meta page 落盘的过程中崩溃，
+	// 磁盘上的数据就可能处于不正确的状态，导致数据库文件不可用。
+	// 于是 Bolt 准备了两份 meta page，暂且用 A 和 B 表示。
+	// 如果上次写入的是 A，这次就写入 B，反之亦然。从而保证，读取数据库文件发现一份 meta page 失效时，
+	//可以立即将数据恢复到另一个 meta page 所记录的状态。如何恢复到上一个状态？Bolt 的思路很精简，
+	// 所有发生更新的数据都写入到新的 page 中，保证数据库文件中总是保留上一次写入的数据，用空间换取更简单的处理逻辑。
 	metaA := db.meta0
 	metaB := db.meta1
 	if db.meta1.txid > db.meta0.txid {
@@ -974,13 +982,13 @@ type meta struct {
 	// 页大小
 	pageSize uint32
 	flags    uint32
-	// 根bucket
+	// 根bucket Bolt 实例所有索引和原数据被组织成一个树形结构，root 就是根节点
 	root bucket
-	// 空闲列表页的ID
+	// 空闲列表页的ID Bolt 删除数据时可能出现富余的空间，这些空间的信息会被记录在 freelist 中备用
 	freelist pgid
-	// 页ID
+	// 页ID 下一个要被分配的 page 的 id，取值大于已分配的所有 pages 的 id
 	pgid pgid
-	// 最大事务ID
+	// 最大事务ID 下一个要被分配的事务 id。事务 id 单调递增，可以被理解为事务执行的逻辑时间
 	txid txid
 	// 校验和
 	checksum uint64
@@ -1013,6 +1021,11 @@ func (m *meta) write(p *page) {
 
 	// Page id is either going to be 0 or 1 which we can determine by the transaction ID.
 	// 页ID要么0 要么1
+	// 覆盖txid较小的meta页
+	// 解释：在tx开始时，tx复制的meta是txid较大的meta页，复制完成之后有txid+1的操作，此时txid%2 一定是未被复制的meta页
+	// 例如：初始值：meta0.txid = 12 meta1.txid = 13
+	// 复制时：因为meta0.txid < meta1.txid 所以tx复的meta是meta1 (pgid = 1) tx.meta.txid = meta1.txid+1 = 14
+	// 写入时：tx.meta.txid % 2 = 0 pgid = 0
 	p.id = pgid(m.txid % 2)
 	p.flags |= metaPageFlag
 

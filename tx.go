@@ -27,7 +27,7 @@ type Tx struct {
 	db             *DB
 	meta           *meta
 	root           Bucket
-	pages          map[pgid]*page
+	pages          map[pgid]*page // 存储该事务操作中读写所涉及到page 在tx.allocate() 中记录
 	stats          TxStats
 	commitHandlers []func()
 

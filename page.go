@@ -42,7 +42,7 @@ type page struct {
 	flags uint16
 	// 个数 2字节，统计叶子节点、非叶子节点、空闲列表页的个数
 	count uint16
-	// 4字节，数据是否有溢出
+	// 4字节，当遇到单个 page 无法装下的数据时，会溢出到其它 pages，overflow 记录溢出总数
 	overflow uint32
 	// 真实数据
 	ptr uintptr

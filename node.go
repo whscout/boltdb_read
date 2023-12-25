@@ -37,6 +37,20 @@ func (n *node) minKeys() int {
 }
 
 // size returns the size of the node after serialization.
+/*
+node内存结构
++-------------+-----------------------------------+-------------------+
+| pageHeader  | pageElement-1, ..., pageElement-n | k1|v1, ..., kn|vn |
++-------------+-----------------------------------+-------------------+
+pageLeafElement 内存结构
++------+-----+-------+-------+
+| flag | pos | ksize | vsize |
++------+-----+-------+-------+
+pageBranchElement 内存结构
++-----+-------+------+
+| pos | ksize | pgid |
++-----+-------+------+
+*/
 func (n *node) size() int {
 	sz, elsz := pageHeaderSize, n.pageElementSize()
 	for i := 0; i < len(n.inodes); i++ {
