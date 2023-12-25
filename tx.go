@@ -173,6 +173,9 @@ func (tx *Tx) Commit() error {
 
 	// Free the freelist and allocate new pages for it. This will overestimate
 	// the size of the freelist but not underestimate the size (which would be bad).
+	// 首先根据事务ID将原有存储freelist页面信息的页面释放掉。
+	// 分配存储这一次写事务的页面信息页面。
+	// 写入这一次的页面信息。
 	tx.db.freelist.free(tx.meta.txid, tx.db.page(tx.meta.freelist))
 	p, err := tx.allocate((tx.db.freelist.size() / tx.db.pageSize) + 1)
 	if err != nil {
